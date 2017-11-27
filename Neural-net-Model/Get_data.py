@@ -5,7 +5,7 @@ from datetime import datetime
 
 def download_data_from_oanda(params):
     """
-    Inputs: a dictionary with parameters
+    Input: a dictionary with parameters
     http://developer.oanda.com/rest-live/rates/
     params = {'instrument': 'EUR_USD',
               'candleFormat': 'midpoint',
@@ -14,7 +14,7 @@ def download_data_from_oanda(params):
               'start': '2017-11-20',
               'count': '200'}
 
-    Returns: list of data up to the last available data point
+    Return: list of data up to the last available data point
     """
 
     # initiate variables
@@ -43,3 +43,5 @@ def download_data_from_oanda(params):
         # check if finished
         finished = not response['candles'][-1]['complete']
         print('Done!') if finished else print(response['candles'][-1]['time'])
+
+        return data
