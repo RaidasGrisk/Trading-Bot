@@ -19,7 +19,7 @@ def download_data_from_oanda(params):
 
     # initiate variables
     data = []
-    delta = None
+    time_delta = None
     time_format = None
     finished = False
 
@@ -34,11 +34,11 @@ def download_data_from_oanda(params):
         # ascertain time delta (only once)
         if not delta:
             time_format = '%Y-%m-%dT%H:%M:%S.000000Z'
-            delta = datetime.strptime(response['candles'][-1]['time'], time_format) - \
-                    datetime.strptime(response['candles'][-2]['time'], time_format)
+            time_delta = datetime.strptime(response['candles'][-1]['time'], time_format) - \
+                         datetime.strptime(response['candles'][-2]['time'], time_format)
 
         # start from last time stamp
-        params['start'] = (datetime.strptime(response['candles'][-1]['time'], time_format) + delta).isoformat('T')
+        params['start'] = (datetime.strptime(response['candles'][-1]['time'], time_format) + time_delta).isoformat('T')
 
         # check if finished
         finished = not response['candles'][-1]['complete']
