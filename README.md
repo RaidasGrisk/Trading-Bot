@@ -1,6 +1,6 @@
 # Trading-Bot
 
-Under construction.
+Under development.
 
 To do list:
 1. Set up code for managing orders (open, close, etc)
