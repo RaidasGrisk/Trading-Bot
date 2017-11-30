@@ -32,7 +32,7 @@ def download_data_from_oanda(params):
         data = np.append(data, np.array(response['candles']))
 
         # ascertain time delta (only once)
-        if not delta:
+        if not time_delta:
             time_format = '%Y-%m-%dT%H:%M:%S.000000Z'
             time_delta = datetime.strptime(response['candles'][-1]['time'], time_format) - \
                          datetime.strptime(response['candles'][-2]['time'], time_format)
@@ -43,5 +43,5 @@ def download_data_from_oanda(params):
         # check if finished
         finished = not response['candles'][-1]['complete']
         print('Done!') if finished else print(response['candles'][-1]['time'])
-
-        return data
+    
+    return data
