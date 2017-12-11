@@ -34,13 +34,13 @@ _, output_dim = np.shape(output_data_raw)
 # split to train and test
 # TODO: make a single function
 train_input = input_data[0:int(len(input_data)*0.7)]
-test_input = input_data[:-int(len(input_data)*0.3)]
+test_input = input_data[-int(len(input_data)*0.3):]
 train_output = output_data[0:int(len(output_data)*0.7)]
-test_output = output_data[:-int(len(output_data)*0.3)]
+test_output = output_data[-int(len(output_data)*0.3):]
 
 # forward-propagation
 # x, y, logits, y_ = logistic_regression(input_dim, output_dim, drop_keep_prob=0.9)
-x, y, logits, y_ = vanilla_nn(input_dim, output_dim, [64, 128, 64, 16], drop_layer=3, drop_keep_prob=0.8)
+x, y, logits, y_ = vanilla_nn(input_dim, output_dim, [64, 128, 64, 16], drop_layer=3, drop_keep_prob=0.9)
 
 # tf cost and optimizer
 # TODO: maximize return or sharpe or something, but not cross-entropy
@@ -54,29 +54,36 @@ sess = tf.Session()
 sess.run(init)
 
 # train
+batch_size = 100
 while True:
 
     # train model
-    train_x, train_y = get_data_batch(train_input, train_output, 1000)
-    _, train_cost, y_train = sess.run([train_step, cost, y_], feed_dict={x: train_x, y: train_y})
-    _, test_cost, y_test = sess.run([train_step, cost, y_], feed_dict={x: test_input, y: test_output})
-
-    # get portfolio value and save stuff
-    signal_test = get_signal(y_test)
-    value_test = portfolio_value(test_input[:, 0], signal_test, trans_costs=0)
-
-    cost_hist.append([train_cost, test_cost])
-    value_hist.append(value_test[-1])
+    train_x, train_y = get_data_batch(train_input, train_output, batch_size)
+    _, train_cost = sess.run([train_step, cost], feed_dict={x: train_x, y: train_y})
 
     # keep track of stuff
     step += 1
-    if step % 1 == 0:
-        print('Train cost: {:.4f}, Test cost: {:.4f},  Test value: {:.2f}'
-              .format(train_cost, test_cost, value_hist[-1]))
+    if step % 10 == 0:
+
+        # get y_ predictions
+        y_train = sess.run([y_], feed_dict={x: train_input, y: train_output})
+        test_cost, y_test = sess.run([cost, y_], feed_dict={x: test_input, y: test_output})
+
+        # get portfolio value
+        signal_test, signal_train = get_signal(y_test), get_signal(y_train[0])
+        value_test = portfolio_value(test_input[:, 0], signal_test, trans_costs=0)
+        value_train = portfolio_value(train_input[:, 0], signal_train, trans_costs=0)
+
+        cost_hist.append([train_cost / batch_size, test_cost / batch_size])
+        value_hist.append([value_train[-1], value_test[-1]])
+
         pl.figure(1)
         pl.subplot(211)
         pl.plot(cost_hist)
         pl.subplot(212)
         pl.plot(value_hist)
         pl.pause(1e-5)
+
+        print('Train cost: {:.4f}, Test cost: {:.4f},  Test value: {:.2f}'
+              .format(train_cost, test_cost, value_hist[-1][1]))
 
