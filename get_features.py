@@ -77,4 +77,5 @@ def get_features(oanda_data):
                                slowk, slowd, macd1, macd2, macd3, stocf1, stockf2, rsi1, rsi2,
                                ados, ht_sine1, ht_sine2, ht_phase, ht_trend, wcp, avg_range])
 
-    return all_indicators
+    return all_indicators.T  # transpose to get (data_points, features)
+
