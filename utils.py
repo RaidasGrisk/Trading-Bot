@@ -87,3 +87,12 @@ def get_data_batch(x, y, batch_size):
     x_batch = x[indexes:indexes+batch_size, ...]
     y_batch = y[indexes:indexes+batch_size, ...]
     return x_batch, y_batch
+
+
+def get_lstm_input_output(x, y, time_steps):
+    """Returns a batch of sequential data for lst shaped like [batch_size, time_steps, features]"""
+    data_points, _ = np.shape(x)
+    x_batch_reshaped = []
+    for i in range(data_points - time_steps):
+        x_batch_reshaped.append(x[i: i+time_steps, :])
+    return np.array(x_batch_reshaped), y[time_steps:]
