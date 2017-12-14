@@ -79,3 +79,4 @@ def get_features(oanda_data):
 
     return all_indicators.T  # transpose to get (data_points, features)
 
+
