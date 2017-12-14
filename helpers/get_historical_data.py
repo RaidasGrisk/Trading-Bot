@@ -80,15 +80,15 @@ def download_multiple_instruments_and_save(instrument_list, params):
         np.save('data\\{}_{}.npy'.format(instrument, params['granularity']), instrument_data)
         print('{} is finished!'.format(instrument))
 
-# code to download a list of instruments
-download_multiple_instruments_and_save(instrument_list=["AUD_JPY", "AUD_USD", "CHF_JPY",
-                                                        "EUR_CAD", "EUR_CHF", "EUR_GBP",
-                                                        "EUR_JPY", "EUR_USD", "GBP_CHF",
-                                                        "GBP_JPY", "GBP_USD", "NZD_JPY",
-                                                        "NZD_USD", "USD_CHF", "USD_JPY"],
-                                       params={'instrument': '',
-                                               'candleFormat': 'midpoint',
-                                               'granularity': 'M1',
-                                               'dailyAlignment': '0',
-                                               'start': '2001-01-01',
-                                               'count': '5000'})
+# # code to download a list of instruments
+# download_multiple_instruments_and_save(instrument_list=["AUD_JPY", "AUD_USD", "CHF_JPY",
+#                                                         "EUR_CAD", "EUR_CHF", "EUR_GBP",
+#                                                         "EUR_JPY", "EUR_USD", "GBP_CHF",
+#                                                         "GBP_JPY", "GBP_USD", "NZD_JPY",
+#                                                         "NZD_USD", "USD_CHF", "USD_JPY"],
+#                                        params={'instrument': '',
+#                                                'candleFormat': 'midpoint',
+#                                                'granularity': 'M1',
+#                                                'dailyAlignment': '0',
+#                                                'start': '2001-01-01',
+#                                                'count': '5000'})
