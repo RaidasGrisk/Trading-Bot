@@ -5,29 +5,26 @@ Utils
 import numpy as np
 
 
-def remove_nan_rows(array):
+def remove_nan_rows(items):
     """
-    Deletes rows if at least one value is nan.
-    Returns array with filtered rows.
+    Get rid of rows if at least one value is nan in at least one item in input.
+    Inputs a list of items to remove nans
+    Returns arrays with filtered rows and unified length.
     """
-    mask = np.any(np.isnan(array), axis=1)
-    return array[~mask, :]
+    unified_mask = np.zeros(len(items[0]))
+    for item in items:
+        mask = np.any(np.isnan(item), axis=1)
+        unified_mask = (mask == unified_mask)
+    return [item[unified_mask, :] for item in items]
 
 
-def extract_timeseries_from_oanda_data(oanda_data, time_series):
-    """Give a key from oanda data and put it's contents into an array"""
-    return np.array([x[time_series]for x in oanda_data]).reshape(len(oanda_data), 1)
-
-
-def prep_data_for_feature_gen(data):
-    """Restructure OANDA data to use it for TA-Lib feature generation"""
-    inputs = {
-        'open': np.array([x['openMid'] for x in data]),
-        'high': np.array([x['highMid'] for x in data]),
-        'low': np.array([x['lowMid'] for x in data]),
-        'close': np.array([x['closeMid'] for x in data]),
-        'volume': np.array([float(x['volume']) for x in data])}
-    return inputs
+def extract_timeseries_from_oanda_data(oanda_data, items):
+    """Given keys of oanda data, put it's contents into an array"""
+    output = []
+    for item in items:
+        time_series = np.array([x[item] for x in oanda_data]).reshape(len(oanda_data), 1)
+        output.append(time_series)
+    return output if len(output) > 1 else output[0]
 
 
 def price_to_binary_target(oanda_data, delta=0.001):
@@ -36,7 +33,7 @@ def price_to_binary_target(oanda_data, delta=0.001):
     [0, 1, 0] price drop
     [0, 0, 1] no change (flat)
     """
-    price = extract_timeseries_from_oanda_data(oanda_data, 'closeMid')
+    price = extract_timeseries_from_oanda_data(oanda_data, ['closeMid'])
     price_change = np.array([x1 / x2 - 1 for x1, x2 in zip(price[1:], price)])
     binary_price = np.zeros(shape=(len(price), 3))
     binary_price[-1] = np.nan
@@ -56,6 +53,15 @@ def price_to_binary_target(oanda_data, delta=0.001):
     return binary_price
 
 
+def train_test_validation_split(input, output, split=(0.5, 0.35, 0.15)):
+    """Splits data into train, test, validation samples"""
+    train, test, cv = split
+    id_train = int(len(input) * train)
+    id_test = int(len(input) * (train + test))
+    return input[:id_train], input[id_train:id_test], input[id_test:], \
+           output[:id_train], output[id_train:id_test], output[id_test:]
+
+
 def get_signal(softmax_output):
     """Return an array of signals given softmax output"""
     signal_index = np.argmax(softmax_output, axis=1)
@@ -72,7 +78,7 @@ def get_signal(softmax_output):
 
 def portfolio_value(price, signal, trans_costs=0.0001):
     """Return portfolio value given price of an instrument, it's transaction costs and signal values"""
-    price_change = np.array([x1 / x2 - 1 for x1, x2 in zip(price[1:], price)])
+    price_change = np.array([i / j - 1 for i, j in zip(price[1:], price)])
     signal_percent = signal[:-1] * price_change.reshape(len(price_change), 1)
     transaction_costs = np.zeros_like(signal_percent)
     for i in range(len(signal)-1):
@@ -86,11 +92,11 @@ def get_data_batch(x, y, batch_size):
     indexes = np.random.choice(len(y) - (batch_size+1))
     x_batch = x[indexes:indexes+batch_size, ...]
     y_batch = y[indexes:indexes+batch_size, ...]
-    return x_batch, y_batch
+    return x_batch, y_batch,
 
 
 def get_lstm_input_output(x, y, time_steps):
-    """Returns a batch of sequential data for lst shaped like [batch_size, time_steps, features]"""
+    """Returns a batch of sequential data for lstm shaped like [batch_size, time_steps, features]"""
     data_points, _ = np.shape(x)
     x_batch_reshaped = []
     for i in range(data_points - time_steps):

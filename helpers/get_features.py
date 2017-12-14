@@ -7,13 +7,31 @@ https://cryptotrader.org/talib
 
 import numpy as np
 from talib.abstract import *
-from utils import prep_data_for_feature_gen
+from helpers.utils import extract_timeseries_from_oanda_data
+
+
+def prep_data_for_feature_gen(data):
+    """Restructure OANDA data to use it for TA-Lib feature generation"""
+    inputs = {
+        'open': np.array([x['openMid'] for x in data]),
+        'high': np.array([x['highMid'] for x in data]),
+        'low': np.array([x['lowMid'] for x in data]),
+        'close': np.array([x['closeMid'] for x in data]),
+        'volume': np.array([float(x['volume']) for x in data])}
+    return inputs
 
 
 def get_features(oanda_data):
     """Given OANDA data get some specified indicators using TA-Lib
     This is unfinished work. For now just random unstructured indicators
     """
+
+    # price and volume
+    price, volume = extract_timeseries_from_oanda_data(oanda_data, ['closeMid', 'volume'])
+    price_change = np.array([float(i) / float(j) - 1 for i, j in zip(price[1:], price)])
+    volume_change = np.array([float(i) / float(j) - 1 for i, j in zip(volume[1:], volume)])
+    price_change = np.concatenate([[np.nan], price_change], axis=0)
+    volume_change = np.concatenate([[np.nan], volume_change], axis=0)
 
     inputs = prep_data_for_feature_gen(oanda_data)
 
@@ -73,10 +91,9 @@ def get_features(oanda_data):
     #     pattern_indicators.append(result)
     # pattern_indicators = np.array(pattern_indicators)
 
-    all_indicators = np.array([par_sar, outm, outf, upper, middle, lower, bop, cci, adx, cmo,
-                               slowk, slowd, macd1, macd2, macd3, stocf1, stockf2, rsi1, rsi2,
+    all_indicators = np.array([price_change, volume_change, par_sar, outm, outf, upper, middle, lower, bop, cci, adx,
+                               cmo, slowk, slowd, macd1, macd2, macd3, stocf1, stockf2, rsi1, rsi2,
                                ados, ht_sine1, ht_sine2, ht_phase, ht_trend, wcp, avg_range])
 
     return all_indicators.T  # transpose to get (data_points, features)
-
 
