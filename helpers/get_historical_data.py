@@ -1,6 +1,7 @@
 import requests
 import numpy as np
 from datetime import datetime
+import os
 
 
 def download_data_from_oanda(params):
@@ -12,7 +13,7 @@ def download_data_from_oanda(params):
               'granularity': 'M15',
               'dailyAlignment': '0',
               'start': '2017-11-20',
-              'count': '200'}
+              'count': '5000'}
 
     Return: list of data up to the last available data point
     """
@@ -43,5 +44,51 @@ def download_data_from_oanda(params):
         # check if finished
         finished = not response['candles'][-1]['complete']
         print('Done!') if finished else print(response['candles'][-1]['time'])
-    
+
     return data
+
+
+def download_multiple_instruments_and_save(instrument_list, params):
+    """
+    Downloads specified instruments and saves it to /data/'instrument'.npy
+
+    instrument_list = ["AUD_JPY", "AUD_USD", "CHF_JPY",
+                       "EUR_CAD", "EUR_CHF", "EUR_GBP",
+                       "EUR_JPY", "EUR_USD", "GBP_CHF",
+                       "GBP_JPY", "GBP_USD", "NZD_JPY",
+                       "NZD_USD", "USD_CHF", "USD_JPY"]
+
+    params = {'instrument': '',
+              'candleFormat': 'midpoint',
+              'granularity': 'M15',
+              'dailyAlignment': '0',
+              'start': '2017-11-20',
+              'count': '5000'}
+
+    Return: None it just saves the data
+    """
+
+    starting_time = params['start']
+    for instrument in instrument_list:
+
+        # download data
+        params['instrument'] = instrument
+        params['start'] = starting_time
+        instrument_data = download_data_from_oanda(params)
+
+        # save and track progress
+        np.save('data\\{}_{}.npy'.format(instrument, params['granularity']), instrument_data)
+        print('{} is finished!'.format(instrument))
+
+# code to download a list of instruments
+download_multiple_instruments_and_save(instrument_list=["AUD_JPY", "AUD_USD", "CHF_JPY",
+                                                        "EUR_CAD", "EUR_CHF", "EUR_GBP",
+                                                        "EUR_JPY", "EUR_USD", "GBP_CHF",
+                                                        "GBP_JPY", "GBP_USD", "NZD_JPY",
+                                                        "NZD_USD", "USD_CHF", "USD_JPY"],
+                                       params={'instrument': '',
+                                               'candleFormat': 'midpoint',
+                                               'granularity': 'M1',
+                                               'dailyAlignment': '0',
+                                               'start': '2001-01-01',
+                                               'count': '5000'})
