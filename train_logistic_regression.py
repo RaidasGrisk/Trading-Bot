@@ -5,31 +5,30 @@ Main: script for training models
 import numpy as np
 import pylab as pl
 import tensorflow as tf
-from sklearn.preprocessing import normalize
+from sklearn.preprocessing import minmax_scale
 from helpers.utils import price_to_binary_target, extract_timeseries_from_oanda_data, train_test_validation_split
 from helpers.utils import remove_nan_rows, get_signal, portfolio_value, get_data_batch
 from models import logistic_regression
 from helpers.get_features import get_features
 
 # hyper-params
-batch_size = 512
+batch_size = 1024
 plotting = False
 value_cv_moving_average = 100
 
 # load data
-oanda_data = np.load('data\\EUR_GBP_H1.npy')[-20000:]
+oanda_data = np.load('data\\EUR_GBP_H1.npy')[-50000:]
 input_data_raw = get_features(oanda_data)
-output_data_raw = price_to_binary_target(oanda_data, delta=0.00025)
+output_data_raw = price_to_binary_target(oanda_data, delta=0.0001)
 price_data_raw = extract_timeseries_from_oanda_data(oanda_data, ['closeMid'])
 
 # prepare data
 input_data, output_data, price_data = remove_nan_rows([input_data_raw, output_data_raw, price_data_raw])
-input_data_norm = normalize(input_data, axis=1, norm='l2')
+input_data_norm = minmax_scale(input_data, axis=0)
 
 # split to train,test and cross validation
-input_train, input_test, input_cv, output_train, output_test, output_cv = \
-    train_test_validation_split(input_data_norm, output_data, split=(0.5, 0.3, 0.2))
-price_train, price_test, price_cv, _, _, _ = train_test_validation_split(price_data, price_data, split=(0.5, 0.3, 0.2))
+input_train, input_test, input_cv, output_train, output_test, output_cv, price_train, price_test, price_cv = \
+    train_test_validation_split([input_data_norm, output_data, price_data], split=(0.5, 0.3, 0.2))
 
 # get dims
 _, input_dim = np.shape(input_data_raw)
@@ -54,7 +53,7 @@ sess.run(init)
 while True:
 
     # train model
-    x_train, y_train = get_data_batch(input_train, output_train, batch_size)
+    x_train, y_train = get_data_batch([input_train, output_train], batch_size)
     _, cost_train = sess.run([train_step, cost], feed_dict={x: x_train, y: y_train})
 
     # keep track of stuff
@@ -103,3 +102,8 @@ while True:
 
 pl.figure(3)
 pl.plot(value_hist_cv_ma)
+
+pl.figure(4)
+pl.plot(value_train)
+pl.plot(value_test)
+pl.plot(value_cv)
