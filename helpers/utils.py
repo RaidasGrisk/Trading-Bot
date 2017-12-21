@@ -11,10 +11,10 @@ def remove_nan_rows(items):
     Inputs a list of items to remove nans
     Returns arrays with filtered rows and unified length.
     """
-    unified_mask = np.zeros(len(items[0]))
+    unified_mask = np.ones(len(items[0]), dtype=bool)
     for item in items:
         mask = np.any(np.isnan(item), axis=1)
-        unified_mask = (mask == unified_mask)
+        unified_mask[mask == True] = False
     return [item[unified_mask, :] for item in items]
 
 
@@ -37,7 +37,7 @@ def price_to_binary_target(oanda_data, delta=0.001):
     price_change = np.array([x1 / x2 - 1 for x1, x2 in zip(price[1:], price)])
     binary_price = np.zeros(shape=(len(price), 3))
     binary_price[-1] = np.nan
-    for data_point in range(len(price_change)-1):
+    for data_point in range(len(price_change)):
         if price_change[data_point] > 0 and price_change[data_point] - delta > 0:  # price will drop
             column = 0
         elif price_change[data_point] < 0 and price_change[data_point] + delta < 0:  # price will rise
@@ -53,13 +53,19 @@ def price_to_binary_target(oanda_data, delta=0.001):
     return binary_price
 
 
-def train_test_validation_split(input, output, split=(0.5, 0.35, 0.15)):
+def train_test_validation_split(list_of_items, split=(0.5, 0.35, 0.15)):
     """Splits data into train, test, validation samples"""
     train, test, cv = split
-    id_train = int(len(input) * train)
-    id_test = int(len(input) * (train + test))
-    return input[:id_train], input[id_train:id_test], input[id_test:], \
-           output[:id_train], output[id_train:id_test], output[id_test:]
+    id_train = int(len(list_of_items[0]) * train)
+    id_test = int(len(list_of_items[0]) * (train + test))
+
+    split_tuple = ()
+    for item in list_of_items:
+        train_split = item[:id_train]
+        test_split = item[id_train:id_test]
+        cv_split = item[id_test:]
+        split_tuple = split_tuple + (train_split, test_split, cv_split)
+    return split_tuple
 
 
 def get_signal(softmax_output):
@@ -87,12 +93,14 @@ def portfolio_value(price, signal, trans_costs=0.0001):
     return value
 
 
-def get_data_batch(x, y, batch_size):
+def get_data_batch(list_of_items, batch_size):
     """Returns a batch of sequential data"""
-    indexes = np.random.choice(len(y) - (batch_size+1))
-    x_batch = x[indexes:indexes+batch_size, ...]
-    y_batch = y[indexes:indexes+batch_size, ...]
-    return x_batch, y_batch,
+    indexes = np.random.choice(len(list_of_items[0]) - (batch_size+1))
+    batch_list = []
+    for item in list_of_items:
+        batch = item[indexes:indexes+batch_size, ...]
+        batch_list.append(batch)
+    return batch_list
 
 
 def get_lstm_input_output(x, y, time_steps):
