@@ -17,7 +17,7 @@ To do list:
 
    Try 1. Predict the direction of price in the next time period. Target values [1, 0, 0] for up, [0, 1, 0] for down [0, 0, 1] for flat. Train by minimizing cross enropy of error.
    
-   Try 2. Instead of predicting price direction, allocate the funds to buy, sell, do not enter positions directly. For instance [0.5, 0.2, 0.3] would indicate to buy 0.5 units, sell 0.2 units and keep in cash 0.3 units. Train by directly maximizing profit.
+   Try 2. Instead of predicting price direction, allocate the funds to buy, sell, do not enter positions directly. For instance [0.5, 0.2, 0.3] would indicate to buy 0.5 units, sell 0.2 units and keep in cash 0.3 units. Train by directly maximizing objective function (i.e. profit, therefore not target labels are provided as in try 1).
    
    Try 3. ...
 
