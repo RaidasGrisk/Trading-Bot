@@ -6,6 +6,7 @@ https://cryptotrader.org/talib
 """
 
 import numpy as np
+from datetime import datetime, timedelta
 from talib.abstract import *
 from helpers.utils import extract_timeseries_from_oanda_data
 
@@ -43,6 +44,9 @@ def get_features(oanda_data):
                                   optInNbDevUp=2,
                                   optInNbDevDn=2,
                                   optinMAType='EMA')
+    upper = upper - price.ravel()
+    middle = middle - price.ravel()
+    lower = price.ravel() - lower
 
     # momentum
     bop = BOP(inputs)
@@ -91,9 +95,17 @@ def get_features(oanda_data):
     #     pattern_indicators.append(result)
     # pattern_indicators = np.array(pattern_indicators)
 
+    # markets dummies
+    time = np.array([datetime.strptime(x['time'], '%Y-%m-%dT%H:%M:%S.000000Z') for x in oanda_data])
+    mrkt_london = [3 <= x.hour <= 11 for x in time]
+    mrkt_ny = [8 <= x.hour <= 16 for x in time]
+    mrkt_sydney = [17 <= x.hour <= 24 or 0 <= x.hour <= 1 for x in time]
+    mrkt_tokyo = [19 <= x.hour <= 24 or 0 <= x.hour <= 3 for x in time]
+
     all_indicators = np.array([price_change, volume_change, par_sar, outm, outf, upper, middle, lower, bop, cci, adx,
-                               cmo, slowk, slowd, macd1, macd2, macd3, stocf1, stockf2, rsi1, rsi2,
-                               ados, ht_sine1, ht_sine2, ht_phase, ht_trend, wcp, avg_range])
+                               cmo, macd1, macd2, macd3, stocf1, stockf2, rsi1, rsi2,
+                               ados, ht_sine1, ht_sine2, ht_phase, wcp, avg_range])
 
-    return all_indicators.T  # transpose to get (data_points, features)
+    all_dummies = np.array([ht_trend, mrkt_london, mrkt_ny, mrkt_sydney, mrkt_tokyo])
 
+    return all_indicators.T, all_dummies.T  # transpose to get (data_points, features)
