@@ -27,7 +27,10 @@ def download_data_from_oanda(params):
     while not finished:
 
         # get response
-        response = requests.get(url='https://api-fxtrade.oanda.com/v1/candles', params=params).json()
+        try:
+            response = requests.get(url='https://api-fxtrade.oanda.com/v1/candles', params=params).json()
+        except ValueError:
+            print('Something is wrong with oanda response')
 
         # append response
         data = np.append(data, np.array(response['candles']))
@@ -80,7 +83,20 @@ def download_multiple_instruments_and_save(instrument_list, params):
         np.save('data\\{}_{}.npy'.format(instrument, params['granularity']), instrument_data)
         print('{} is finished!'.format(instrument))
 
-# # code to download a list of instruments
+
+def get_latest_oanda_data(instrument, granularity, count):
+    """Returns last oanda data (with a length of count) for a given instrument and granularity"""
+
+    params = {'instrument': instrument,
+              'candleFormat': 'midpoint',
+              'granularity': granularity,
+              'dailyAlignment': '0',
+              'count': count}
+    response = requests.get(url='https://api-fxtrade.oanda.com/v1/candles', params=params).json()
+    return np.array(response['candles'])
+
+
+# code to download a list of instruments
 # download_multiple_instruments_and_save(instrument_list=["AUD_JPY", "AUD_USD", "CHF_JPY",
 #                                                         "EUR_CAD", "EUR_CHF", "EUR_GBP",
 #                                                         "EUR_JPY", "EUR_USD", "GBP_CHF",
