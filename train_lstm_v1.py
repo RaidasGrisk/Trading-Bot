@@ -19,7 +19,7 @@ value_cv_moving_average = 100
 split = (0.5, 0.3, 0.2)
 
 # load data
-oanda_data = np.load('data\\EUR_GBP_H1.npy')[-60000:]
+oanda_data = np.load('data\\EUR_GBP_H1.npy')[-50000:]
 input_data_raw, input_data_dummies = get_features(oanda_data)
 output_data_raw = price_to_binary_target(oanda_data, delta=0.00037)
 price_data_raw = extract_timeseries_from_oanda_data(oanda_data, ['closeMid'])

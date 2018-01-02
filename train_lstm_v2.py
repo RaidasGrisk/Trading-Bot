@@ -1,36 +1,30 @@
 """
-Training logistic regression v2:
+Training lstm v2:
 using model to allocate funds, i.e. maximizing return without correct labels.
-
-Things to work out:
-1. price_data_raw percentage or pips? (percentage)
-2. objective function normalization (yearly percentage return..? etc)
 
 Other options to set:
 np.set_printoptions(linewidth=75*3+5, edgeitems=6)
 pl.rcParams.update({'font.size': 6})
 """
 
-
 import numpy as np
 import pylab as pl
 import tensorflow as tf
 from helpers.utils import extract_timeseries_from_oanda_data, train_test_validation_split
-from helpers.utils import remove_nan_rows, get_data_batch
-from models import logistic_regression
+from helpers.utils import remove_nan_rows, get_data_batch, get_lstm_input_output
+from models import lstm_nn
 from helpers.get_features import get_features, min_max_scaling
 
-
 # hyper-params
-batch_size = 1024
+batch_size = 256
+time_steps = 12
 plotting = False
-saving = True
+saving = False
 value_cv_moving_average = 50
-split = (0.5, 0.3, 0.2)
+split = (0.6, 0.2, 0.1)
 
 # load data
-# TODO
-oanda_data = np.load('data\\EUR_USD_H1.npy')[-50000:]
+oanda_data = np.load('data\\EUR_USD_M10.npy')  # [-50000:]
 price_data_raw = extract_timeseries_from_oanda_data(oanda_data, ['closeMid'])
 input_data_raw, input_data_dummy = get_features(oanda_data)
 price_data_raw = np.concatenate([[[0]],
@@ -40,22 +34,25 @@ price_data_raw = np.concatenate([[[0]],
 input_data, price_data, input_data_dummy = remove_nan_rows([input_data_raw, price_data_raw, input_data_dummy])
 input_data_scaled_no_dummies = (input_data - min_max_scaling[1, :]) / (min_max_scaling[0, :] - min_max_scaling[1, :])
 input_data_scaled = np.concatenate([input_data_scaled_no_dummies, input_data_dummy], axis=1)
+input_data_lstm, _ = get_lstm_input_output(input_data_scaled, np.zeros_like(input_data), time_steps=time_steps)
+price_data = price_data[-len(input_data_lstm):]
 
 # split to train,test and cross validation
 input_train, input_test, input_cv, price_train, price_test, price_cv = \
-    train_test_validation_split([input_data_scaled, price_data], split=split)
+    train_test_validation_split([input_data_lstm, price_data], split=split)
 
 # get dims
-_, input_dim = np.shape(input_data_scaled)
+_, _, input_dim = np.shape(input_train)
 
 # forward-propagation
-x, _, logits, y_ = logistic_regression(input_dim, 3, drop_keep_prob=0.7)
+x, y, logits, y_ = lstm_nn(input_dim, 3, time_steps=time_steps, n_hidden=[3], drop_keep_prob=0.6)
 
 # tf cost and optimizer
 price_h = tf.placeholder(tf.float32, [None, 1])
 signals = tf.constant([[1., -1., 0.]])
 objective = (tf.reduce_mean(y_[:-1] * signals * price_h[1:] * 100))  # profit function
 train_step = tf.train.AdamOptimizer(0.001).minimize(-objective)
+
 
 # init session
 step, step_hist, objective_hist_train, objective_hist_test, value_hist_train, value_hist_test, \
@@ -65,8 +62,7 @@ init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 
-
-# main loop
+# train
 while True:
 
     # train model
@@ -121,7 +117,7 @@ while True:
                 else np.average([value_test[-1], value_cv[-1]])
             saving_score = current_score if saving_score < current_score else saving_score
             if saving_score == current_score and saving_score > 0.05:
-                saver.save(sess, 'saved_models/lr-v2-avg_score{:.3f}'.format(current_score), global_step=step)
+                saver.save(sess, 'saved_models/lstm-v2-avg_score{:.3f}'.format(current_score), global_step=step)
                 print('Model saved. Average score: {:.2f}'.format(current_score))
 
                 pl.figure(2)
