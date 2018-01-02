@@ -16,14 +16,14 @@ from oandapyV20.contrib.requests import MarketOrderRequest
 import json
 
 
+# TODO: make sure send_request checks if order is through on weekends and no order_book is created
 class TradingSession:
 
     # initiate objects
     def __init__(self, accountID, access_token):
         self.accountID = accountID
         self.api = oandapyV20.API(access_token=access_token, environment="practice")
-        self.opened_orders_list = {'EUR_USD': None,
-                                   'AUD_JPY': None}
+        self.order_book = self.sync_open_positions()
 
     # initiate methods
     def send_request(self, request):
@@ -42,8 +42,16 @@ class TradingSession:
     def open_order(self, instrument, units):
 
         # check if position is already open
-        if self.opened_orders_list[instrument] is not None:
-            print('Position {} is already opened'.format(instrument))
+        if units < 0:
+            if self.order_book[instrument]['order_type'] is (not None and -1):
+                print('Short: {} (holding)'.format(instrument))
+                return 1
+        elif units > 0:
+            if self.order_book[instrument]['order_type'] is (not None and 1):
+                print('Long: {} (holding)'.format(instrument))
+                return 1
+        else:
+            print('Units specified: 0')
             return 1
 
         # define parameters, create and send a request
@@ -54,8 +62,9 @@ class TradingSession:
         # check if request was fulfilled and save its ID
         if request_data is not 1:
             instrument = request_data['orderCreateTransaction']['instrument']
-            self.opened_orders_list[instrument] = (request_data['lastTransactionID'])
-            print('Opened: {}'.format(instrument))
+            self.order_book[instrument]['tradeID'] = (request_data['lastTransactionID'])
+            self.order_book[instrument]['order_type'] = -1 if units < 0 else 1
+            print('{}: {}'.format('Long' if units > 0 else 'Short', instrument))
             return 0
         else:
             return 1
@@ -63,18 +72,19 @@ class TradingSession:
     def close_order(self, instrument):
 
         # check if position exist
-        if self.opened_orders_list[instrument] is None:
+        if self.order_book[instrument]['order_type'] is None:
             print('Position {} does not exist'.format(instrument))
             return 1
 
         # create and send a request
-        r = trades.TradeClose(accountID=self.accountID, tradeID=self.opened_orders_list[instrument])
+        r = trades.TradeClose(accountID=self.accountID, tradeID=self.order_book[instrument]['tradeID'])
         request_data = self.send_request(r)
 
         # check if request was fulfilled and clear it
         if request_data is not 1:
             instrument = request_data['orderCreateTransaction']['instrument']
-            self.opened_orders_list[instrument] = None
+            self.order_book[instrument]['order_type'] = None
+            self.order_book[instrument]['tradeID'] = None
             print('Closed: {}'.format(instrument))
             return 0
         else:
@@ -87,6 +97,22 @@ class TradingSession:
     def check_account_summary(self):
         r = accounts.AccountSummary(self.accountID)
         return self.send_request(r)
+
+    def sync_open_positions(self):
+        """Synchronize open positions with this object's order_book"""
+        order_book_oanda = self.check_open_positions()
+        order_book = {'EUR_USD': {'order_type': None, 'tradeID': None},
+                      'AUD_JPY': {'order_type': None, 'tradeID': None}}
+        for pos in order_book_oanda['positions']:
+            try:
+                trade_id = pos['long']['tradeIDs']
+                order_type = 1
+            except KeyError:
+                trade_id = pos['short']['tradeIDs']
+                order_type = -1
+            order_book[pos['instrument']]['tradeID'] = trade_id
+            order_book[pos['instrument']]['order_type'] = order_type
+        return order_book
 
 
 def close_order_manually(accountID, access_token, tradeID):

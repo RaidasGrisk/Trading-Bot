@@ -102,10 +102,39 @@ def get_features(oanda_data):
     mrkt_sydney = [17 <= x.hour <= 24 or 0 <= x.hour <= 1 for x in time]
     mrkt_tokyo = [19 <= x.hour <= 24 or 0 <= x.hour <= 3 for x in time]
 
+    # sorting indicators
     all_indicators = np.array([price_change, volume_change, par_sar, outm, outf, upper, middle, lower, bop, cci, adx,
                                cmo, macd1, macd2, macd3, stocf1, stockf2, rsi1, rsi2,
                                ados, ht_sine1, ht_sine2, ht_phase, wcp, avg_range])
 
     all_dummies = np.array([ht_trend, mrkt_london, mrkt_ny, mrkt_sydney, mrkt_tokyo])
 
+    # min max parameters for scaling
+    # _, length = all_indicators.shape
+    # length = int(length * 0.7)
+    #
+    # min_max_parameters = np.array([np.nanmax(all_indicators[:, :length], axis=1),
+    #                                np.nanmin(all_indicators[:, :length], axis=1)])
+
     return all_indicators.T, all_dummies.T  # transpose to get (data_points, features)
+
+
+# min max scaling params (needs to be created manually (for now) or better use scilearn min_max scaler
+min_max_scaling = np.array([[1.86410584e-03,   2.01841085e+00,   1.19412800e+00,
+                             1.19447352e+00,   1.19295244e+00,   2.70961491e-03,
+                             1.32700000e-03,   4.05070743e-03,   9.86577181e-01,
+                             2.51521519e+02,   3.64593211e+01,   5.84544775e+01,
+                             1.52468944e-03,   1.44255282e-03,   3.38887291e-04,
+                             9.91166078e+01,   9.54336553e+01,   1.00000000e+02,
+                             1.00000000e+02,   7.34727536e+03,   2.47949723e-01,
+                            -5.09698958e-01,   2.06138115e+02,   1.19570250e+00,
+                             1.04819528e-01],
+                           [-1.30372596e-03,  -6.84790089e-01,  -1.19592000e+00,
+                             1.18566979e+00,   1.15180427e+00,   2.90481254e-05,
+                            -1.93000000e-03,   3.75062541e-05,  -9.53846154e-01,
+                            -2.35424245e+02,   1.29761986e+01,  -2.20316967e+01,
+                             8.84276800e-05,   1.76158803e-04,  -2.39463856e-04,
+                             3.67647059e-01,   9.65742018e+00,   0.00000000e+00,
+                            -2.96059473e-15,  -1.71810219e+03,  -4.40536468e-01,
+                            -9.46300629e-01,   1.65643780e+02,   1.18376500e+00,
+                             6.95891066e-02]])
