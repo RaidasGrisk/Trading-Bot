@@ -6,10 +6,6 @@ To do list:
 
 1. **[Easy way to get historical data](helpers/get_historical_data.py)**
 
-   aaa
-   
-   bbb
-
 2. **[Set up code for managing orders (open, close, etc)](helpers/oanda_api_helpers.py)**
 
 3. **[Engineer some features](helpers/get_features.py) and explore.**
