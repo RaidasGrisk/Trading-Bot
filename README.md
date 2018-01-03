@@ -24,7 +24,7 @@ To do list:
    
    Objective function is jumping up and down like crazy because batches of input are not homogenious (the set of 'rules' by which objective function is optimized changes dramatically from batch to batch). Nonetheless, it slowly moves towards some kind of optima.
 
-     **Try 1.** Predict the direction of price in the next time period. Target values [1, 0, 0] for up, [0, 1, 0] for down [0, 0, 1] for flat. Train by minimizing cross enropy of error.
+     **Try 1.** Predict the direction of price in the next time period. Target values [1, 0, 0] for up, [0, 1, 0] for down [0, 0, 1] for flat. Train by minimizing cross entropy of error.
      
    | [logistic regression](/train_logistic_regression_v1.py) | [lstm net](/train_lstm_v1.py) | [convolutional net](/train_cnn_v1.py) |
    | ------------------- | -------- | ----------------- |
