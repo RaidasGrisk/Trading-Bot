@@ -47,3 +47,6 @@ To do list:
       **Try 3.** ...
 
 **5. [Wrap things up and use the models to manage a single asset portfolio.](/main.py)**
+
+   So far, logistic regression is the best bet. 
+
