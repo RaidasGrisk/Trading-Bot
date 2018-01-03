@@ -22,7 +22,9 @@ To do list:
    
    Results are terribly (!!!) dependent on randomization. My guess is, because the surface of objective function is very rough, each random initialization of weights and random pick of first training batches leads to new local optima. Therefore, to find a really good fit each model should be trained multiple times.
    
-   Objective function is jumping up and down like crazy because batches of input are not homogenious (the set of 'rules' by which objective function is optimized changes dramatically from batch to batch). Nonetheless, it slowly moves towards some kind of optima.
+   Objective function is jumping up and down like crazy because batches of input are not homogenious (the set of 'rules' by which objective function is optimized changes dramatically from batch to batch). Nonetheless, it slowly moves towards some kind of optima (alright, not always).
+   
+   All the training is done using hourly data of EUR/USD. Once I'm comfortible with data exploration, models and stuff, I should try other pairs as well.
 
      **Try 1.** Predict the direction of price in the next time period. Target values [1, 0, 0] for up, [0, 1, 0] for down [0, 0, 1] for flat. Train by minimizing cross entropy of error.
      
@@ -48,5 +50,5 @@ To do list:
 
 **5. [Wrap things up and use the models to manage a single asset portfolio.](/main.py)**
 
-   So far, logistic regression is the best bet. 
+   So far, logistic regression FTW!
 
