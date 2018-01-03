@@ -91,9 +91,12 @@ def get_latest_oanda_data(instrument, granularity, count):
               'candleFormat': 'midpoint',
               'granularity': granularity,
               'dailyAlignment': '0',
-              'count': count}
+              'count': count+1}  # +1 to make sure all returned candles are complete
     response = requests.get(url='https://api-fxtrade.oanda.com/v1/candles', params=params).json()
-    return np.array(response['candles'])
+    data = np.array(response['candles'])
+
+    # if last candle is complete, return full data (except first point), else omit last data point
+    return data[1:] if data[-1]['complete'] else data[:-1]
 
 
 # code to download a list of instruments
