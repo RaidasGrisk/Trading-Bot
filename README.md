@@ -48,6 +48,7 @@ To do list:
       - Results are terribly (!!!) dependent on randomization. My guess is, because the surface of objective function is very rough, each random initialization of weights and random pick of first training batches leads to new local optima. Therefore, to find a really good fit each model should be trained multiple times.
       - Sometimes cost function is jumping up and down like crazy because batches of input are not homogenious (?) (the set of 'rules' by which objective function is optimized changes dramatically from batch to batch). Nonetheless, it slowly moves towards some kind of optima (not always! it might take a few tries of training from the beginning).
       - Adjusting hyper-parameters is hard and painful but might be worth the effort.
+      - Training the models by optimizing cost cross-entropy (try 1) is much more effective then maximising return withought target labels (try 2).
    
       **Try 3.** ...
 
