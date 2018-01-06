@@ -13,8 +13,8 @@ import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 # oanda access keys
-accountID = '101-004-3943081-006'
-access_token = 'fb12d7edd860927ce27467d8ec4aee94-1cb7ffc0e40d649b736315872a10c545'
+accountID = ''
+access_token = ''
 model_name = 'lr-v2-avg_score0.204-64000'
 
 # init trading session
