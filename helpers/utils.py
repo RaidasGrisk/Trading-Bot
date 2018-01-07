@@ -93,20 +93,33 @@ def portfolio_value(price, signal, trans_costs=0.0001):
     return value
 
 
-def get_data_batch(list_of_items, batch_size):
-    """Returns a batch of sequential data"""
-    indexes = np.random.choice(len(list_of_items[0]) - (batch_size+1))
+def get_data_batch(list_of_items, batch_size, sequential):
+    """Returns a batch of data. A batch of sequence or random points."""
+    if sequential:
+        indexes = np.random.randint(len(list_of_items[0]) - (batch_size+1))
+    else:
+        indexes = np.random.randint(0, len(list_of_items[0]), batch_size)
     batch_list = []
     for item in list_of_items:
-        batch = item[indexes:indexes+batch_size, ...]
+        batch = item[indexes:indexes+batch_size, ...] if sequential else item[indexes, ...]
         batch_list.append(batch)
     return batch_list
 
 
 def get_lstm_input_output(x, y, time_steps):
-    """Returns a batch of sequential data for lstm shaped like [batch_size, time_steps, features]"""
+    """Returns sequential lstm shaped data [batch_size, time_steps, features]"""
     data_points, _ = np.shape(x)
     x_batch_reshaped = []
     for i in range(data_points - time_steps):
         x_batch_reshaped.append(x[i: i+time_steps, :])
+    return np.array(x_batch_reshaped), y[time_steps:]
+
+
+def get_cnn_input_output(x, y, time_steps=12):
+    """Returns sequential cnn shaped data [batch_size, features, time_steps]"""
+    data_points, _ = np.shape(x)
+    x_batch_reshaped = []
+    for i in range(data_points - time_steps):
+        x_batch_reshaped.append(x[i:i+time_steps, :])
+    x_batch_reshaped = np.transpose(np.array([x_batch_reshaped]), axes=(1, 3, 2, 0))
     return np.array(x_batch_reshaped), y[time_steps:]

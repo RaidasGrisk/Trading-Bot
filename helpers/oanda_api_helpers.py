@@ -22,8 +22,9 @@ class TradingSession:
     # initiate objects
     def __init__(self, accountID, access_token):
         self.accountID = accountID
+        self.access_token = access_token
         self.api = oandapyV20.API(access_token=access_token, environment="practice")
-        self.order_book = self.sync_open_positions()
+        self.order_book = self.oanda_order_book()
 
     # initiate methods
     def send_request(self, request):
@@ -62,7 +63,7 @@ class TradingSession:
         # check if request was fulfilled and save its ID
         if request_data is not 1:
             instrument = request_data['orderCreateTransaction']['instrument']
-            self.order_book[instrument]['tradeID'] = (request_data['lastTransactionID'])
+            self.order_book[instrument]['tradeID'] = request_data['lastTransactionID']
             self.order_book[instrument]['order_type'] = -1 if units < 0 else 1
             print('{}: {}'.format('Long' if units > 0 else 'Short', instrument))
             return 0
@@ -98,7 +99,7 @@ class TradingSession:
         r = accounts.AccountSummary(self.accountID)
         return self.send_request(r)
 
-    def sync_open_positions(self):
+    def oanda_order_book(self):
         """Synchronize open positions with this object's order_book"""
         order_book_oanda = self.check_open_positions()
         order_book = {'EUR_USD': {'order_type': None, 'tradeID': None},
@@ -113,6 +114,37 @@ class TradingSession:
             order_book[pos['instrument']]['tradeID'] = trade_id
             order_book[pos['instrument']]['order_type'] = order_type
         return order_book
+
+    def sync_with_oanda(self):
+        self.order_book = self.oanda_order_book()
+
+    def close_all_open_positions(self):
+        """Close all opened positions"""
+
+        # check oanda for open positions
+        try:
+            open_positions = self.check_open_positions()['positions'][0]
+        except IndexError:
+            self.order_book = self.oanda_order_book()
+            print('No opened positions')
+            return 0
+
+        # get ID's of open positions
+        trade_ids = []
+        try:
+            [trade_ids.append(x) for x in open_positions['short']['tradeIDs']]
+        except KeyError:
+            pass
+        try:
+            [trade_ids.append(x) for x in open_positions['long']['tradeIDs']]
+        except KeyError:
+            pass
+
+        # close orders by ID
+        [close_order_manually(self.accountID, self.access_token, x) for x in trade_ids]
+        self.order_book = self.oanda_order_book()
+        print('All positions closed')
+        return 0
 
 
 def close_order_manually(accountID, access_token, tradeID):
