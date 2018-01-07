@@ -36,19 +36,19 @@ To do list:
    
    | [logistic regression](/train_logistic_regression_v2.py) | [lstm net](/train_lstm_v2.py) | [convolutional net](/train_cnn_v2.py) |
    | ------------------- | -------- | ----------------- |
-   | <img src="/images/lr_v2_1.png"> | <img src="/images/lstm_v2_1.png"> | <img src="/images/cnn_v2_1.png"> |
+   | <img src="/images/lr_v2.png"> | <img src="/images/lstm_v2.png"> | <img src="/images/cnn_v2.png"> |
    
    <p align="center"> 
       <img src="/images/legend_one_fits_all.png">
    </p>
    
     **Concusions after a few tries:**
-      - LSTM's and CNN's have a big overfit (and at the same time underfit) problem that is hard to deal with. So, features should be picked very carefully for these models.
+      - Optimizing by minimizing cost cross-entropy with target labels works (try 1). Optimizing by maximizing average return without target labels does not work (try 2). Because of unstable / uneven gradients maybe..?
+      - LSTM and CNN models suffer from overfit problem (and underfit as well) that is hard to deal with. So I'll have to filter out least important features if I want to make it work.
       - Learning rate does make a big difference. Training logistic regression with really small lr converges much better. It's probably a good idea to decrease lr again after a number of iterations.
       - Results are terribly (!!!) dependent on randomization. My guess is, because the surface of objective function is very rough, each random initialization of weights and random pick of first training batches leads to new local optima. Therefore, to find a really good fit each model should be trained multiple times.
       - Sometimes cost function is jumping up and down like crazy because batches of input are not homogenious (?) (the set of 'rules' by which objective function is optimized changes dramatically from batch to batch). Nonetheless, it slowly moves towards some kind of optima (not always! it might take a few tries of training from the beginning).
-      - Adjusting hyper-parameters is hard and painful but might be worth the effort.
-      - Training the models by optimizing cost cross-entropy (try 1) is much more effective then maximising return withought target labels (try 2).
+      - Adjusting hyper-parameters is hard but it seems it might be worth the effort.
    
       **Try 3.** ...
 
@@ -57,6 +57,6 @@ To do list:
    So far, logistic regression FTW!
    
    **Ideas to try out later:**
-   1. Use cnn to generate features, not predictions. Train these feeatures with logistic regression.
+   1. Use inner layers of cnn as features in logistic regression.
    2. Grand-model with multiple pairs as input and output.
 
