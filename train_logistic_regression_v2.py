@@ -21,15 +21,20 @@ from models import logistic_regression
 from helpers.get_features import get_features, min_max_scaling
 
 
+# other-params
+np.set_printoptions(linewidth=75*3+5, edgeitems=6)
+pl.rcParams.update({'font.size': 6})
+
 # hyper-params
 batch_size = 1024
-plotting = False
-saving = True
-value_cv_moving_average = 50
+learning_rate = 0.002
+drop_keep_prob = 0.3
+value_moving_average = 50
 split = (0.5, 0.3, 0.2)
+plotting = False
+saving = False
 
 # load data
-# TODO
 oanda_data = np.load('data\\EUR_USD_H1.npy')[-50000:]
 price_data_raw = extract_timeseries_from_oanda_data(oanda_data, ['closeMid'])
 input_data_raw, input_data_dummy = get_features(oanda_data)
@@ -41,7 +46,7 @@ input_data, price_data, input_data_dummy = remove_nan_rows([input_data_raw, pric
 input_data_scaled_no_dummies = (input_data - min_max_scaling[1, :]) / (min_max_scaling[0, :] - min_max_scaling[1, :])
 input_data_scaled = np.concatenate([input_data_scaled_no_dummies, input_data_dummy], axis=1)
 
-# split to train,test and cross validation
+# split to train, test and cross validation
 input_train, input_test, input_cv, price_train, price_test, price_cv = \
     train_test_validation_split([input_data_scaled, price_data], split=split)
 
@@ -49,54 +54,60 @@ input_train, input_test, input_cv, price_train, price_test, price_cv = \
 _, input_dim = np.shape(input_data_scaled)
 
 # forward-propagation
-x, _, logits, y_ = logistic_regression(input_dim, 3, drop_keep_prob=0.7)
+x, y, logits, y_, learning_r, drop_out = logistic_regression(input_dim, 3)
 
 # tf cost and optimizer
 price_h = tf.placeholder(tf.float32, [None, 1])
 signals = tf.constant([[1., -1., 0.]])
-objective = (tf.reduce_mean(y_[:-1] * signals * price_h[1:] * 100))  # profit function
-train_step = tf.train.AdamOptimizer(0.001).minimize(-objective)
+cost = tf.reduce_mean(y_ * signals * price_h * 100)  # * 24 * 251  # objective fun: annualized average hourly return
+train_step = tf.train.AdamOptimizer(learning_r).minimize(-cost)
 
 # init session
-step, step_hist, objective_hist_train, objective_hist_test, value_hist_train, value_hist_test, \
-    value_hist_cv, value_hist_cv_ma, saving_score = 0, [], [], [], [], [], [], [], 0.05
+cost_hist_train, cost_hist_test, value_hist_train, value_hist_test, value_hist_cv, value_hist_train_ma, \
+    value_hist_test_ma, value_hist_cv_ma, step, step_hist, saving_score = [], [], [], [], [], [], [], [], 0, [], 0.05
 saver = tf.train.Saver()
 init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 
-
 # main loop
 while True:
 
+    if step ==30000:
+        break
+
     # train model
-    x_train, price_batch = get_data_batch([input_train, price_train], batch_size)
-    _, objective_train, sig = sess.run([train_step, objective, y_], feed_dict={x: x_train, price_h: price_batch})
+    x_train, price_batch = get_data_batch([input_train[:-1], price_train[1:]], batch_size, sequential=False)
+    _, cost_train = sess.run([train_step, cost],
+                             feed_dict={x: x_train, price_h: price_batch,
+                                        learning_r: learning_rate, drop_out: drop_keep_prob})
 
     # keep track of stuff
     step += 1
     if step % 100 == 0 or step == 1:
 
         # get y_ predictions
-        y_train_pred = sess.run(y_, feed_dict={x: input_train})
-        y_test_pred, objective_test = sess.run([y_, objective], feed_dict={x: input_test, price_h: price_test})
-        y_cv_pred = sess.run(y_, feed_dict={x: input_cv})
+        y_train_pred = sess.run(y_, feed_dict={x: input_train, drop_out: drop_keep_prob})
+        y_test_pred, cost_test = sess.run([y_, cost], feed_dict={x: input_test[:-1], price_h: price_test[1:], drop_out: drop_keep_prob})
+        y_cv_pred = sess.run(y_, feed_dict={x: input_cv, drop_out: drop_keep_prob})
 
         # get portfolio value
         value_train = 1 + np.cumsum(np.sum(y_train_pred[:-1] * [1., -1., 0.] * price_train[1:], axis=1))
-        value_test = 1 + np.cumsum(np.sum(y_test_pred[:-1] * [1., -1., 0.] * price_test[1:], axis=1))
+        value_test = 1 + np.cumsum(np.sum(y_test_pred * [1., -1., 0.] * price_test[1:], axis=1))
         value_cv = 1 + np.cumsum(np.sum(y_cv_pred[:-1] * [1., -1., 0.] * price_cv[1:], axis=1))
 
         # save history
         step_hist.append(step)
-        objective_hist_train.append(objective_train)
-        objective_hist_test.append(objective_test)
+        cost_hist_train.append(cost_train)
+        cost_hist_test.append(cost_test)
         value_hist_train.append(value_train[-1])
         value_hist_test.append(value_test[-1])
         value_hist_cv.append(value_cv[-1])
-        value_hist_cv_ma.append(np.mean(value_hist_cv[-value_cv_moving_average:]))
+        value_hist_train_ma.append(np.mean(value_hist_train[-value_moving_average:]))
+        value_hist_test_ma.append(np.mean(value_hist_test[-value_moving_average:]))
+        value_hist_cv_ma.append(np.mean(value_hist_cv[-value_moving_average:]))
 
-        print('Step {}: train {:.4f}, test {:.4f}'.format(step, objective_train, objective_test))
+        print('Step {}: train {:.4f}, test {:.4f}'.format(step, cost_train, cost_test))
 
         if plotting:
 
@@ -104,18 +115,20 @@ while True:
 
             pl.subplot(211)
             pl.title('Objective function')
-            pl.plot(step_hist, objective_hist_train, color='darkorange', linewidth=0.3)
-            pl.plot(step_hist, objective_hist_test, color='dodgerblue', linewidth=0.3)
+            pl.plot(step_hist, cost_hist_train, color='darkorange', linewidth=0.3)
+            pl.plot(step_hist, cost_hist_test, color='dodgerblue', linewidth=0.3)
 
             pl.subplot(212)
             pl.title('Portfolio value')
             pl.plot(step_hist, value_hist_train, color='darkorange', linewidth=0.3)
             pl.plot(step_hist, value_hist_test, color='dodgerblue', linewidth=0.3)
             pl.plot(step_hist, value_hist_cv, color='magenta', linewidth=1)
-            pl.plot(step_hist, value_hist_cv_ma, color='black', linewidth=0.5)
+            pl.plot(step_hist, value_hist_train_ma, color='tomato', linewidth=1.5)
+            pl.plot(step_hist, value_hist_test_ma, color='royalblue', linewidth=1.5)
+            pl.plot(step_hist, value_hist_cv_ma, color='black', linewidth=1.5)
             pl.pause(1e-10)
 
-        # save if some complicated rules
+            # save if some complicated rules
         if saving:
             current_score = 0 if value_test[-1] < 0.01 or value_cv[-1] < 0.01 \
                 else np.average([value_test[-1], value_cv[-1]])
@@ -125,7 +138,8 @@ while True:
                 print('Model saved. Average score: {:.2f}'.format(current_score))
 
                 pl.figure(2)
-                pl.plot(value_test, linewidth=0.2)
-                pl.plot(value_cv, linewidth=2)
+                pl.plot(value_train, linewidth=1)
+                pl.plot(value_test, linewidth=1)
+                pl.plot(value_cv, linewidth=1)
                 pl.pause(1e-10)
 

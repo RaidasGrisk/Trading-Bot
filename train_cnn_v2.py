@@ -8,8 +8,8 @@ import numpy as np
 import pylab as pl
 import tensorflow as tf
 from helpers.utils import extract_timeseries_from_oanda_data, train_test_validation_split
-from helpers.utils import remove_nan_rows, get_data_batch, get_lstm_input_output
-from models import lstm_nn
+from helpers.utils import remove_nan_rows, get_data_batch, get_cnn_input_output
+from models import cnn
 from helpers.get_features import get_features, min_max_scaling
 
 
@@ -18,14 +18,14 @@ np.set_printoptions(linewidth=75*3+5, edgeitems=6)
 pl.rcParams.update({'font.size': 6})
 
 # hyper-params
-batch_size = 10024
-learning_rate = 0.05
-drop_keep_prob = 0.7
+batch_size = 1024
+learning_rate = 0.002
+drop_keep_prob = 0.2
 value_moving_average = 50
-split = (0.7, 0.2, 0.1)
+split = (0.5, 0.3, 0.2)
 plotting = False
 saving = False
-time_steps = 6
+time_steps = 4
 
 # load data
 oanda_data = np.load('data\\EUR_USD_H1.npy')  # [-50000:]
@@ -38,22 +38,22 @@ price_data_raw = np.concatenate([[[0]],
 input_data, price_data, input_data_dummy = remove_nan_rows([input_data_raw, price_data_raw, input_data_dummy])
 input_data_scaled_no_dummies = (input_data - min_max_scaling[1, :]) / (min_max_scaling[0, :] - min_max_scaling[1, :])
 input_data_scaled = np.concatenate([input_data_scaled_no_dummies, input_data_dummy], axis=1)
-input_data_lstm, _ = get_lstm_input_output(input_data_scaled, np.zeros_like(input_data), time_steps=time_steps)
-price_data = price_data[-len(input_data_lstm):]
+input_data, _ = get_cnn_input_output(input_data, np.zeros_like(input_data), time_steps=time_steps)
+price_data = price_data[-len(input_data):]
 
 # split to train,test and cross validation
 input_train, input_test, input_cv, price_train, price_test, price_cv = \
-    train_test_validation_split([input_data_lstm, price_data], split=split)
+    train_test_validation_split([input_data, price_data], split=split)
 
 # get dims
-_, _, input_dim = np.shape(input_train)
+_, input_dim, _, _ = np.shape(input_train)
 
 # forward-propagation
-x, y, logits, y_, learning_r, drop_out = lstm_nn(input_dim, 3, time_steps=time_steps, n_hidden=[3])
+x, y, logits, y_, learning_r, drop_out = cnn(input_dim, 3, time_steps=time_steps, filter=[1, 1])
 
 # tf cost and optimizer
 price_h = tf.placeholder(tf.float32, [None, 1])
-signals = tf.constant([[1., -1., -1e-10]])
+signals = tf.constant([[1., -1., 0.]])
 cost = (tf.reduce_mean(y_ * signals * price_h * 100))  # profit function
 train_step = tf.train.AdamOptimizer(learning_r).minimize(-cost)
 
