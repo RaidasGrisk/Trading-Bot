@@ -59,4 +59,5 @@ To do list:
    **Ideas to try out later:**
    1. Use inner layers of cnn as features in logistic regression.
    2. Grand-model with multiple pairs as input and output.
+   3. Use evolution strategies to optimize for stuff that has no smooth gradients: SL...
 
