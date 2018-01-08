@@ -62,6 +62,7 @@ def do_stuff_every_period():
 
     # download latest data
     # always check if new candle is present, because even after 5 seconds, it might be not formed if market is very calm
+    # make sure this loop does not loop endlessly on weekends (this is configured in scheduler)
     while True:
         oanda_data = get_latest_oanda_data('EUR_USD', 'H1', 300)  # many data-points to increase EMA and such accuracy
         current_complete_candle_stamp = oanda_data[-1]['time']
