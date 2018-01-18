@@ -69,7 +69,7 @@ Instead of predicting price direction, allocate the funds to buy, sell, do not e
    </p>
    
 **Concusions after a few tries:**
-   - Optimizing by minimizing cost cross-entropy with target labels works (try 1). Optimizing by maximizing average return without target labels does not work (try 2). Because of unstable / uneven gradients maybe..?
+   - Optimizing by minimizing cost cross-entropy with target labels works (i.e. predicting price direction). Optimizing by maximizing average return without target labels does not work (i.e. predicting optimal positions allocation). Because of unstable / uneven gradients maybe..?
    - LSTM and CNN models suffer from overfit problem (and underfit as well) that is hard to deal with. So I'll have to filter out least important features if I want to make it work.
    - Learning rate does make a big difference. Training logistic regression with really small lr converges much better. It's probably a good idea to decrease lr again after a number of iterations.
    - Results are terribly (!!!) dependent on randomization. My guess is, because the surface of objective function is very rough, each random initialization of weights and random pick of first training batches leads to new local optima. Therefore, to find a really good fit each model should be trained multiple times.
