@@ -1,3 +1,4 @@
+---------
 ### Table of Contents  
 
  1. [Intro](#Intro) 
@@ -8,8 +9,9 @@
  
 <a name="Intro"/>
 
-### 1. Intro
 ---------
+### 1. Intro
+
 This is a repo where I store code for training and making an automated FX trading bot.  
    
 Essentially most of the work done here is about trying to train an accurate price movement classification model. But it as well contains all of the other necessary stuff like downloading historical or recent FX data and live-managing a demo trading account using OANDA's API.  
@@ -20,8 +22,10 @@ Once I'm comfortible with data exploration, models and stuff, I should try other
 
 <a name="Tools"/>
 
-### 2. Trading tools and helpers
 ---------
+### 2. Trading tools and helpers
+
+
    * **[Easy way to get historical data.](helpers/get_historical_data.py)** Simple code to download historical (or current) data of selected instruments using OANDA's API.
 
    * **[Live trading portfolio manager.](helpers/oanda_api_helpers.py)** A class to manage real-time trading, open and close positions etc. using OANDA's API wrapper.
@@ -30,8 +34,9 @@ Once I'm comfortible with data exploration, models and stuff, I should try other
    
 <a name="train_v1"/>
 
-### 3. Training models V1
 ---------
+### 3. Training models V1
+
 First try is a bunch of 'quick and dirty' models with just a few features and some optimization experimentation. I've hand picked a few financial indicators and made sure they do not correlate too much. Additionally I've made a few dummy variables for market hours in major markets.  
 
    <p align="center"> 
@@ -73,12 +78,14 @@ Instead of predicting price direction, allocate the funds to buy, sell, do not e
 
 <a name="train_v2"/>
 
+---------
 ### 3. Training models V2
 
 Soon
 
 <a name="Concusion"/>
 
+---------
 ### 5. Final remarks
 
    So far, logistic regression FTW!
