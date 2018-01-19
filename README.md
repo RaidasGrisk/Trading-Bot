@@ -65,7 +65,7 @@ Instead of predicting price direction, allocate the funds to buy, sell, do not e
    | <img src="/images/lr_v2.png"> | <img src="/images/lstm_v2.png"> | <img src="/images/cnn_v2.png"> |
    
    <p align="center"> 
-      <img src="/images/legend_one_fits_all.png">
+      <img src="/images/legend_one_fits_all.png">       
    </p>
    
 **Concusions after a few tries:**
@@ -81,16 +81,33 @@ Instead of predicting price direction, allocate the funds to buy, sell, do not e
 ---------
 ### 3. Training models V2
 
-Soon
+This time the idea was to: 
+  1. Create dozens of features (ta-lib indicators) of varying periods. Roughly there is 80 indicators, some of which can vary in time-periods, so all-in-all it is reasonable to create ~250 features.
+  2. Perform PCA to simplify everything and get rid of similar and unimportant highly correlated features.
+  3. Experiment with polynomials.
+
+After trying multiple ways of combining the features polynomials and PCA, it seems that this approach did not increase the accuracy of the model. Just for feature reference I unclude best ROC scores I was able to reach using this approach.
+
+**<p align="center"> Receiver operating curve </p>**
+<p align="center"> <img src="/images/ROC_lr_v2.png"></p>
+
+Here is an example of portfolio value given the best models. Unfortunately, the results change dramatically once transaction costs are accounted for.
+
+**<p align="center"> Portfolio value w\ and w\o transaction costs </p>**
+
+<p align="center"> <img src="/images/portfolio_value_1.png"> </p>
+
+**Final concusion for now:**
+  1. Given only price and volume data, predicting price direction is not really accurate. 
+  2. For predictions to be reasonable more features are needed. For instance sentiment data, other macroeconomic data or whatever.
+  3. If not only possible profitable strategy would be, to use other models like position sizing and carefully entering trades to decrease total transaction costs.
 
 <a name="Concusion"/>
 
 ---------
 ### 5. Final remarks
-
-   So far, logistic regression FTW!
    
-   **Ideas to try out later:**
+   **Ideas to try out someday:**
    1. Use inner layers of cnn as features in logistic regression.
    2. Grand-model with multiple pairs as input and output.
    3. Use evolution strategies to optimize for stuff that has no smooth gradients: SL...
