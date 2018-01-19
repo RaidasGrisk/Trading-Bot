@@ -3,6 +3,8 @@ Utils
 """
 
 import numpy as np
+import pandas as pd
+import pylab as plt
 
 
 def remove_nan_rows(items):
@@ -27,7 +29,7 @@ def extract_timeseries_from_oanda_data(oanda_data, items):
     return output if len(output) > 1 else output[0]
 
 
-def price_to_binary_target(oanda_data, delta=0.001):
+def price_to_binary_target(oanda_data, delta=0.0001):
     """Quick and dirty way of constructing output where:
     [1, 0, 0] rise in price
     [0, 1, 0] price drop
@@ -35,21 +37,29 @@ def price_to_binary_target(oanda_data, delta=0.001):
     """
     price = extract_timeseries_from_oanda_data(oanda_data, ['closeMid'])
     price_change = np.array([x1 / x2 - 1 for x1, x2 in zip(price[1:], price)])
+    price_change = np.concatenate([[[0]], price_change])
     binary_price = np.zeros(shape=(len(price), 3))
     binary_price[-1] = np.nan
-    for data_point in range(len(price_change)):
-        if price_change[data_point] > 0 and price_change[data_point] - delta > 0:  # price will drop
+    for data_point in range(len(price_change) - 1):
+        if price_change[data_point+1] > 0 and price_change[data_point+1] - delta > 0:  # price will drop
             column = 0
-        elif price_change[data_point] < 0 and price_change[data_point] + delta < 0:  # price will rise
+        elif price_change[data_point+1] < 0 and price_change[data_point+1] + delta < 0:  # price will rise
             column = 1
         else:  # price will not change
             column = 2
         binary_price[data_point][column] = 1
 
+    # print target label distribution
     data_points = len(binary_price[:-1])
     print('Rise: {:.2f}, Drop: {:.2f}, Flat: {:.2f}'.format(np.sum(binary_price[:-1, 0]) / data_points,
                                                             np.sum(binary_price[:-1, 1]) / data_points,
                                                             np.sum(binary_price[:-1, 2]) / data_points))
+
+    # print df to check if no look-ahead bias is introduced
+    print(pd.DataFrame(np.concatenate([np.around(price, 5),
+                                       np.around(price_change, 4),
+                                       binary_price.astype(int)], axis=1)[:10, :]))
+
     return binary_price
 
 
@@ -82,14 +92,19 @@ def get_signal(softmax_output):
     return signal
 
 
-def portfolio_value(price, signal, trans_costs=0.0001):
-    """Return portfolio value given price of an instrument, it's transaction costs and signal values"""
-    price_change = np.array([i / j - 1 for i, j in zip(price[1:], price)])
-    signal_percent = signal[:-1] * price_change.reshape(len(price_change), 1)
+def portfolio_value(price_change, signal, trans_costs=0.000):
+    """Return portfolio value.
+    IMPORTANT!
+    signal received from last fully formed candle
+    percentage price change over last fully formed candle and previous period"""
+    # signal = signal_train
+    # price_change = price_data
+    signal_percent = signal[:-1] * price_change[1:]
     transaction_costs = np.zeros_like(signal_percent)
     for i in range(len(signal)-1):
-        transaction_costs[i] = [trans_costs * price[i] if signal[i] != signal[i+1] else 0]
+        transaction_costs[i] = [trans_costs if signal[i] != signal[i+1] and signal[i+1] != 0 else 0]
     value = np.cumsum(signal_percent - transaction_costs) + 1
+    # full = np.concatenate([signal, np.concatenate([[[0]], transaction_costs], axis=0)], axis=1)
     return value
 
 
@@ -123,3 +138,86 @@ def get_cnn_input_output(x, y, time_steps=12):
         x_batch_reshaped.append(x[i:i+time_steps, :])
     x_batch_reshaped = np.transpose(np.array([x_batch_reshaped]), axes=(1, 3, 2, 0))
     return np.array(x_batch_reshaped), y[time_steps:]
+
+
+def plot_roc_curve(y_pred_prob, y_target):
+    """Source: http://scikit-learn.org/stable/auto_examples/model_selection/plot_roc.html"""
+    from sklearn.metrics import roc_curve, auc
+    # roc curve
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    for i in range(3):
+        fpr[i], tpr[i], _ = roc_curve(y_target[:, i], y_pred_prob[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Compute micro-average ROC curve and ROC area
+    fpr["micro"], tpr["micro"], _ = roc_curve(y_target.ravel(), y_pred_prob.ravel())
+    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+
+    return roc_auc["micro"], fpr["micro"], tpr["micro"]
+
+
+def y_trans(y, to_1d):
+    """Transform y data from [1, -1] to [[1, 0, 0], [0, 1, 0]] and vice versa"""
+    if to_1d:
+        y_flat = y.argmax(axis=1)
+        map = {0: 1, 1: -1, 2: 0}
+        y_new = np.copy(y_flat)
+        for k, v in map.items():
+            y_new[y_flat == k] = v
+        return y_new.reshape(-1, 1)
+    else:
+        y_new = np.zeros(shape=(len(y), 3))
+        for i in range(len(y_new)):
+            index = [0 if y[i] == 1 else 1 if y[i] == -1 else 2][0]
+            y_new[i, index] = 1
+        return y_new
+
+
+def min_max_scale(input_train, input_test, input_cv, std_dev_threshold=2.1):
+    from sklearn.preprocessing import MinMaxScaler
+
+    # get rid of outliers
+    input_train_df = pd.DataFrame(input_train)
+    input_train_no_outliers = input_train_df[input_train_df.apply(
+        lambda x: np.abs(x - x.median()) / x.std() < std_dev_threshold).all(axis=1)].as_matrix()
+
+    scaler = MinMaxScaler()
+    scaler.fit(input_train_no_outliers)
+
+    input_train_scaled = scaler.fit_transform(input_train)
+    input_test_scaled = scaler.fit_transform(input_test)
+    input_cv_scaled = scaler.fit_transform(input_cv)
+
+    return input_train_scaled, input_test_scaled, input_cv_scaled
+
+
+def get_pca(input_train, input_test, input_cv, threshold=0.01):
+    from sklearn.decomposition import PCA
+    pca = PCA()
+    pca.fit(input_train)
+    plt.plot(pca.explained_variance_ratio_)
+    nr_features = np.sum(pca.explained_variance_ratio_ > threshold)
+
+    input_train_pca = pca.fit_transform(input_train)
+    input_test_pca = pca.fit_transform(input_test)
+    input_cv_pca = pca.fit_transform(input_cv)
+
+    input_train_pca = input_train_pca[:, :nr_features]
+    input_test_pca = input_test_pca[:, :nr_features]
+    input_cv_pca = input_cv_pca[:, :nr_features]
+
+    return input_train_pca, input_test_pca, input_cv_pca
+
+
+def get_poloynomials(input_train, input_test, input_cv, degree=2):
+    from sklearn.preprocessing import PolynomialFeatures
+    poly = PolynomialFeatures(degree=degree)
+    poly.fit(input_train)
+
+    input_train_poly = poly.fit_transform(input_train)
+    input_test_poly = poly.fit_transform(input_test)
+    input_cv_poly = poly.fit_transform(input_cv)
+
+    return input_train_poly, input_test_poly, input_cv_poly

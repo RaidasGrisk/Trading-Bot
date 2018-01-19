@@ -5,10 +5,22 @@ https://github.com/mrjbq7/ta-lib
 https://cryptotrader.org/talib
 """
 
+import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 from talib.abstract import *
+import talib
 from helpers.utils import extract_timeseries_from_oanda_data
+import pylab as plt
+
+
+def scale_data(input_data_no_dummies, split):
+    """Scale NON DUMMY data given train, test, cv split"""
+    from sklearn.preprocessing import MinMaxScaler
+    train_split = int(len(input_data_no_dummies)*split[0])
+    scaler = MinMaxScaler()
+    scaler.fit(input_data_no_dummies[:train_split])
+    return scaler.transform(input_data_no_dummies)
 
 
 def prep_data_for_feature_gen(data):
@@ -109,17 +121,116 @@ def get_features(oanda_data):
 
     all_dummies = np.array([ht_trend, mrkt_london, mrkt_ny, mrkt_sydney, mrkt_tokyo])
 
-    # min max parameters for scaling
-    # _, length = all_indicators.shape
-    # length = int(length * 0.7)
-    #
-    # min_max_parameters = np.array([np.nanmax(all_indicators[:, :length], axis=1),
-    #                                np.nanmin(all_indicators[:, :length], axis=1)])
-
     return all_indicators.T, all_dummies.T  # transpose to get (data_points, features)
 
 
-# min max scaling params (needs to be created manually (for now) or better use scilearn min_max scaler
+def get_features_v2(oanda_data, time_periods, return_numpy):
+    """Returns all (mostly) indicators from ta-lib library for given time periods"""
+
+    # load primary data
+    inputs = prep_data_for_feature_gen(oanda_data)
+
+    # get name of all the functions
+    function_groups = ['Cycle Indicators',
+                       'Momentum Indicators',
+                       'Overlap Studies',
+                       'Volume Indicators',
+                       'Volatility Indicators',
+                       'Statistic Functions']
+    function_list = [talib.get_function_groups()[group] for group in function_groups]
+    function_list = [item for sublist in function_list for item in sublist]  # flatten the list
+    function_list.remove('MAVP')
+
+    # price and volume
+    price, volume = extract_timeseries_from_oanda_data(oanda_data, ['closeMid', 'volume'])
+    price_change = np.array([float(i) / float(j) - 1 for i, j in zip(price[1:], price)])
+    volume_change = np.array([float(i) / float(j) - 1 for i, j in zip(volume[1:], volume)])
+    price_change = np.concatenate([[0], price_change], axis=0)
+    volume_change = np.concatenate([[0], volume_change], axis=0)
+
+    # get all indicators
+    df_indicators = pd.DataFrame()
+    df_indicators['price'] = price.ravel()
+    df_indicators['price_delta'] = price_change
+    df_indicators['volume_change'] = volume_change
+    for func in function_list:
+        if 'timeperiod' in getattr(talib.abstract, func).info['parameters']:
+            for time_period in time_periods:
+                indicator = getattr(talib.abstract, func)(inputs, timeperiod=time_period)
+                if any(isinstance(item, np.ndarray) for item in indicator):  # if indicator returns > 1 time-series
+                    indicator_id = 0
+                    for x in indicator:
+                        df_indicators[func + '_' + str(indicator_id) + '_tp_' + str(time_period)] = x
+                        indicator_id += 1
+                else:  # if indicator returns 1 time-series
+                    df_indicators[func + '_tp_' + str(time_period)] = indicator
+        else:
+            indicator = getattr(talib.abstract, func)(inputs)
+            if any(isinstance(item, np.ndarray) for item in indicator):
+                indicator_id = 0
+                for x in indicator:
+                    df_indicators[func + str(indicator_id)] = x
+                    indicator_id += 1
+            else:
+                df_indicators[func] = indicator
+
+    # manual handling of features
+    df_indicators['AD'] = df_indicators['AD'].pct_change()
+    df_indicators['OBV'] = df_indicators['OBV'].pct_change()
+    df_indicators['HT_DCPERIOD'] = (df_indicators['HT_DCPERIOD'] > pd.rolling_mean(df_indicators['HT_DCPERIOD'], 50)).astype(float)
+    df_indicators['HT_DCPHASE'] = (df_indicators['HT_DCPHASE'] > pd.rolling_mean(df_indicators['HT_DCPHASE'], 10)).astype(float)
+    df_indicators['ADX_tp_10'] = (df_indicators['ADX_tp_10'] > pd.rolling_mean(df_indicators['ADX_tp_10'], 10)).astype(float)
+    df_indicators['MACD0'] = df_indicators['MACD0'] - df_indicators['MACD1']
+    df_indicators['MINUS_DI_tp_10'] = (df_indicators['MINUS_DI_tp_10'] > pd.rolling_mean(df_indicators['MINUS_DI_tp_10'], 20)).astype(float)
+    df_indicators['RSI_tp_10'] = (df_indicators['RSI_tp_10'] > pd.rolling_mean(df_indicators['RSI_tp_10'], 15)).astype(float)
+    df_indicators['ULTOSC'] = (df_indicators['ULTOSC'] > pd.rolling_mean(df_indicators['ULTOSC'], 15)).astype(float)
+    df_indicators['BBANDS_0_tp_10'] = df_indicators['BBANDS_0_tp_10'] - df_indicators['price']
+    df_indicators['BBANDS_1_tp_10'] = df_indicators['BBANDS_1_tp_10'] - df_indicators['price']
+    df_indicators['BBANDS_2_tp_10'] = df_indicators['BBANDS_2_tp_10'] - df_indicators['price']
+    df_indicators['DEMA_tp_10'] = df_indicators['DEMA_tp_10'] - df_indicators['price']
+    df_indicators['EMA_tp_10'] = df_indicators['EMA_tp_10'] - df_indicators['price']
+    df_indicators['HT_TRENDLINE'] = df_indicators['HT_TRENDLINE'] - df_indicators['price']
+    df_indicators['KAMA_tp_10'] = df_indicators['KAMA_tp_10'] - df_indicators['price']
+    df_indicators['MAMA0'] = df_indicators['MAMA0'] - df_indicators['price']
+    df_indicators['MAMA1'] = df_indicators['MAMA1'] - df_indicators['price']
+    df_indicators['MIDPOINT_tp_10'] = df_indicators['MIDPOINT_tp_10'] - df_indicators['price']
+    df_indicators['MIDPRICE_tp_10'] = df_indicators['MIDPRICE_tp_10'] - df_indicators['price']
+    df_indicators['SMA_tp_10'] = df_indicators['SMA_tp_10'] - df_indicators['price']
+    df_indicators['T3_tp_10'] = df_indicators['T3_tp_10'] - df_indicators['price']
+    df_indicators['TEMA_tp_10'] = df_indicators['TEMA_tp_10'] - df_indicators['price']
+    df_indicators['TRIMA_tp_10'] = df_indicators['TRIMA_tp_10'] - df_indicators['price']
+    df_indicators['WMA_tp_10'] = df_indicators['WMA_tp_10'] - df_indicators['price']
+    df_indicators['SAR'] = df_indicators['SAR'] - df_indicators['price']
+    df_indicators['LINEARREG_tp_10'] = df_indicators['LINEARREG_tp_10'] - df_indicators['price']
+    df_indicators['LINEARREG_INTERCEPT_tp_10'] = df_indicators['LINEARREG_INTERCEPT_tp_10'] - df_indicators['price']
+    df_indicators['TSF_tp_10'] = df_indicators['TSF_tp_10'] - df_indicators['price']
+
+    # markets dummies
+    time = np.array([datetime.strptime(x['time'], '%Y-%m-%dT%H:%M:%S.000000Z') for x in oanda_data])
+    df_indicators['mrkt_london'] = np.array([3 <= x.hour <= 11 for x in time]).astype(int)
+    df_indicators['mrkt_ny'] = np.array([8 <= x.hour <= 16 for x in time]).astype(int)
+    df_indicators['mrkt_sydney'] = np.array([17 <= x.hour <= 24 or 0 <= x.hour <= 1 for x in time]).astype(int)
+    df_indicators['mrkt_tokyo'] = np.array([19 <= x.hour <= 24 or 0 <= x.hour <= 3 for x in time]).astype(int)
+
+    print('Features shape: {}'.format(df_indicators.shape))
+
+    return df_indicators.as_matrix() if return_numpy else df_indicators
+
+
+# # min max scaling params (needs to be created manually (for now) or better use scilearn min_max scaler
+# # min max parameters for scaling
+# import pandas as pd
+# oanda_data = np.load('data\\AUD_JPY_H1.npy')[-50000:]
+# all_indicators, all_dummies = get_features(oanda_data)
+# length = int(len(all_indicators) * 0.5)
+# all_indicators = pd.DataFrame(all_indicators[:length, ])
+# all_indicators_pd = all_indicators[all_indicators.apply(lambda x: np.abs(x - x.median()) / x.std() < 3).all(axis=1)]
+# all_indicators_np = all_indicators_pd.as_matrix()
+#
+# min_max_parameters = np.array([np.nanmax(all_indicators_np[:, :length].T, axis=1),
+#                                np.nanmin(all_indicators_np[:, :length].T, axis=1)])
+
+# eur usd
 min_max_scaling = np.array([[1.86410584e-03,   2.01841085e+00,   1.19412800e+00,
                              1.19447352e+00,   1.19295244e+00,   2.70961491e-03,
                              1.32700000e-03,   4.05070743e-03,   9.86577181e-01,
@@ -138,3 +249,4 @@ min_max_scaling = np.array([[1.86410584e-03,   2.01841085e+00,   1.19412800e+00,
                             -2.96059473e-15,  -1.71810219e+03,  -4.40536468e-01,
                             -9.46300629e-01,   1.65643780e+02,   1.18376500e+00,
                              6.95891066e-02]])
+
