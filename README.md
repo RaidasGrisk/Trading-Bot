@@ -86,6 +86,9 @@ This time the idea was to:
   2. Perform PCA to simplify everything and get rid of similar and unimportant highly correlated features.
   3. Experiment with polynomials.
 
+**<p align="center"> Plot example of a few features after normalization </p>**
+<p align="center"> <img src="/images/features_example.png"></p>
+
 After trying multiple ways of combining the features polynomials and PCA, it seems that this approach did not increase the accuracy of the model. Just for feature reference I unclude best ROC scores I was able to reach using this approach.
 
 **<p align="center"> Receiver operating curve </p>**
