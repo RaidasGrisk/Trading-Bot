@@ -68,7 +68,7 @@ Instead of predicting price direction, allocate the funds to buy, sell, do not e
       <img src="/images/legend_one_fits_all.png">       
    </p>
    
-**Concusions after a few tries:**
+**Concusions v1:**
    - Optimizing by minimizing cost cross-entropy with target labels works (i.e. predicting price direction). Optimizing by maximizing average return without target labels does not work (i.e. predicting optimal positions allocation). Because of unstable / uneven gradients maybe..?
    - LSTM and CNN models suffer from overfit problem (and underfit as well) that is hard to deal with. So I'll have to filter out least important features if I want to make it work.
    - Learning rate does make a big difference. Training logistic regression with really small lr converges much better. It's probably a good idea to decrease lr again after a number of iterations.
@@ -89,13 +89,13 @@ This time the idea was to:
 **<p align="center"> Plot example of a few features after normalization </p>**
 <p align="center"> <img src="/images/features_example.png"></p>
 
-After trying multiple ways of combining the features polynomials and PCA, it seems that this approach did not increase the accuracy of the model. Just for feature reference I unclude best ROC scores I was able to reach using this approach.
+After trying multiple ways of combining the features polynomials and PCA, it seems that this approach did not increase the accuracy of the model. Just for future reference I unclude best ROC scores I was able to reach using this approach.
 
 **<p align="center"> Receiver operating curve </p>**
 <p align="center"> <img src="/images/ROC_lr_v2.png"></p>
 
 
-**Final concusion for now:**
+**Conclusions v2:**
 
   1. Given only price and volume data, predicting price direction is not really accurate. 
   2. For predictions to be reasonable more features are needed. For instance sentiment data, other macroeconomic data or whatever.
