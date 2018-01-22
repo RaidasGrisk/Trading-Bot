@@ -94,16 +94,18 @@ After trying multiple ways of combining the features polynomials and PCA, it see
 **<p align="center"> Receiver operating curve </p>**
 <p align="center"> <img src="/images/ROC_lr_v2.png"></p>
 
-Here is an example of portfolio value given the best models. Unfortunately, the results change dramatically once transaction costs are accounted for.
+
+**Final concusion for now:**
+
+  1. Given only price and volume data, predicting price direction is not really accurate. 
+  2. For predictions to be reasonable more features are needed. For instance sentiment data, other macroeconomic data or whatever.
+  3. If not only possible profitable strategy would be, to use other models like position sizing and carefully entering trades to decrease total transaction costs.
+  
+  Here is an example of portfolio value given the best models. Unfortunately, the results change dramatically once transaction costs are accounted for.
 
 **<p align="center"> Portfolio value w\ and w\o transaction costs </p>**
 
 <p align="center"> <img src="/images/portfolio_value_1.png"> </p>
-
-**Final concusion for now:**
-  1. Given only price and volume data, predicting price direction is not really accurate. 
-  2. For predictions to be reasonable more features are needed. For instance sentiment data, other macroeconomic data or whatever.
-  3. If not only possible profitable strategy would be, to use other models like position sizing and carefully entering trades to decrease total transaction costs.
 
 <a name="Concusion"/>
 
